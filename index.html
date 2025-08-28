@@ -121,6 +121,17 @@
             font-size: 18px;
         }
 
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
         .scores-table {
             margin-top: 40px;
             background: #f8f9fa;
@@ -160,14 +171,6 @@
             min-width: 60px;
             text-align: right;
         }
-
-        .footer {
-            background: #f8f9fa;
-            padding: 30px;
-            text-align: center;
-            color: #6c757d;
-            font-size: 14px;
-        }
     </style>
 </head>
 <body>
@@ -181,6 +184,8 @@
             <div id="loading" class="loading">
                 Caricamento dei tuoi risultati...
             </div>
+
+            <div id="debug" class="debug-info" style="display: none;"></div>
 
             <div id="error" class="error-message" style="display: none;">
                 Errore nel caricamento dei dati. Assicurati di aver completato il questionario correttamente.
@@ -208,13 +213,11 @@
                 </div>
             </div>
         </div>
-
-        <div class="footer">
-            <p>Risultati generati automaticamente dal questionario sulle soft skills</p>
-        </div>
     </div>
 
     <script>
+        console.log("=== INIZIO SCRIPT ===");
+        
         // Configurazione delle dimensioni e domande
         const dimensionConfig = {
             'Resilienza': [10, 29, 38, 41],
@@ -243,50 +246,112 @@
             'Apertura': 3.68
         };
 
-        // Funzione per ottenere parametri URL
-        function getUrlParameter(name) {
-            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
-            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
-            var results = regex.exec(location.search);
-            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
-        }
-
         // Funzione per convertire il valore LimeSurvey in numero
         function convertLimeSurveyValue(value) {
-            if (value.startsWith('A')) {
-                return parseInt(value.substring(1));
+            console.log("Conversione valore:", value);
+            if (typeof value === 'string' && value.startsWith('A')) {
+                const num = parseInt(value.substring(1));
+                console.log("Convertito da", value, "a", num);
+                return num;
             }
-            return parseInt(value) || 0;
+            const num = parseInt(value) || 0;
+            console.log("Convertito direttamente a:", num);
+            return num;
         }
 
         // Funzione per ottenere i dati dal questionario
         function getSurveyData() {
+            console.log("=== INIZIO getSurveyData ===");
+            
             const surveyData = {};
+            let debugInfo = '';
             
-            // LimeSurvey passa i dati come parametri URL
-            // Formato: 773748X1286X31883B2001=A3&773748X1286X31883B2002=A4...
+            // DEBUG: Mostra tutti i parametri ricevuti
+            const fullUrl = window.location.href;
+            const urlParams = window.location.search;
             
-            const urlParams = new URLSearchParams(window.location.search);
+            debugInfo += `URL completo: ${fullUrl}\n`;
+            debugInfo += `Parametri URL: ${urlParams}\n\n`;
+            
+            console.log('URL completo:', fullUrl);
+            console.log('Parametri URL:', urlParams);
+            
+            const params = new URLSearchParams(urlParams);
             let hasData = false;
             
-            for (let [key, value] of urlParams.entries()) {
-                // Verifica se il parametro corrisponde al formato delle nostre domande
-                if (key.includes('B20')) {
-                    // Estrae il numero della domanda (2001 -> 1, 2002 -> 2, ecc.)
-                    const match = key.match(/B20(\d+)/);
+            debugInfo += "=== TUTTI I PARAMETRI RICEVUTI ===\n";
+            console.log("=== TUTTI I PARAMETRI RICEVUTI ===");
+            
+            const allParams = {};
+            for (let [key, value] of params.entries()) {
+                allParams[key] = value;
+                debugInfo += `${key} = ${value}\n`;
+                console.log(`${key} = ${value}`);
+            }
+            
+            // Mostra debug info sulla pagina
+            document.getElementById('debug').textContent = debugInfo;
+            document.getElementById('debug').style.display = 'block';
+            
+            if (Object.keys(allParams).length === 0) {
+                console.log("❌ NESSUN PARAMETRO RICEVUTO");
+                debugInfo += "\n❌ NESSUN PARAMETRO RICEVUTO\n";
+                debugInfo += "La pagina non sta ricevendo dati da LimeSurvey.\n";
+                debugInfo += "Verifica la configurazione dell'End URL in LimeSurvey.";
+                document.getElementById('debug').textContent = debugInfo;
+                return null;
+            }
+            
+            // Prova diversi formati per estrarre i dati
+            debugInfo += "\n=== TENTATIVO DI MAPPATURA ===\n";
+            for (let [key, value] of Object.entries(allParams)) {
+                let questionNum = null;
+                
+                // Formato 1: q1, q2, q3, ecc.
+                if (key.match(/^q\d+$/i)) {
+                    questionNum = parseInt(key.substring(1));
+                    console.log(`Formato q: ${key} -> domanda ${questionNum}`);
+                }
+                
+                // Formato 2: qualsiasi cosa che finisce con un numero 1-41
+                else {
+                    const match = key.match(/(\d+)$/);
                     if (match) {
-                        const questionNum = parseInt(match[1]);
-                        surveyData[questionNum] = convertLimeSurveyValue(value);
+                        const num = parseInt(match[1]);
+                        if (num >= 1 && num <= 41) {
+                            questionNum = num;
+                            console.log(`Formato generico: ${key} -> domanda ${questionNum}`);
+                        } else if (num >= 2001 && num <= 2041) {
+                            questionNum = num - 2000;
+                            console.log(`Formato 20XX: ${key} -> domanda ${questionNum}`);
+                        }
+                    }
+                }
+                
+                // Se abbiamo trovato un numero di domanda valido
+                if (questionNum && questionNum >= 1 && questionNum <= 41 && value && value !== '') {
+                    const numericValue = convertLimeSurveyValue(value);
+                    if (numericValue >= 1 && numericValue <= 5) {
+                        surveyData[questionNum] = numericValue;
                         hasData = true;
+                        debugInfo += `✓ MAPPATO: domanda ${questionNum} = ${value} (${numericValue})\n`;
+                        console.log(`✓ MAPPATO: domanda ${questionNum} = ${value} (${numericValue})`);
                     }
                 }
             }
+            
+            debugInfo += `\nDomande trovate: ${Object.keys(surveyData).length}/41\n`;
+            console.log('Dati estratti:', surveyData);
+            console.log('Numero domande trovate:', Object.keys(surveyData).length);
+            
+            document.getElementById('debug').textContent = debugInfo;
             
             return hasData ? surveyData : null;
         }
 
         // Calcola le medie per ogni dimensione
         function calculateUserScores(surveyData) {
+            console.log("=== CALCOLO PUNTEGGI ===");
             const userScores = {};
             
             for (const [dimension, questions] of Object.entries(dimensionConfig)) {
@@ -302,6 +367,7 @@
                 }
                 
                 userScores[dimension] = validAnswers > 0 ? (total / validAnswers) : 0;
+                console.log(`${dimension}: ${userScores[dimension]} (${validAnswers} risposte)`);
             }
             
             return userScores;
@@ -309,6 +375,8 @@
 
         // Crea il diagramma spider
         function createSpiderChart(userScores) {
+            console.log("=== CREAZIONE GRAFICO ===");
+            
             const labels = Object.keys(dimensionConfig);
             const userData = labels.map(label => userScores[label]);
             const referenceData = labels.map(label => referenceValues[label]);
@@ -412,33 +480,48 @@
 
         // Inizializzazione
         function init() {
-            console.log('Inizializzazione pagina risultati...');
+            console.log('=== INIZIALIZZAZIONE ===');
             
-            const surveyData = getSurveyData();
-            
-            if (!surveyData) {
-                console.log('Nessun dato trovato');
+            try {
+                const surveyData = getSurveyData();
+                
+                if (!surveyData) {
+                    console.log('❌ Nessun dato valido trovato');
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').style.display = 'block';
+                    return;
+                }
+                
+                console.log('✅ Dati ricevuti:', surveyData);
+                
+                const userScores = calculateUserScores(surveyData);
+                console.log('✅ Punteggi calcolati:', userScores);
+                
+                // Nasconde loading e debug, mostra risultati
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('debug').style.display = 'none';
+                document.getElementById('chartArea').style.display = 'block';
+                
+                // Crea il grafico e la tabella
+                createSpiderChart(userScores);
+                createScoresTable(userScores);
+                
+                console.log('✅ Grafico creato con successo');
+                
+            } catch (error) {
+                console.error('❌ Errore durante l\'inizializzazione:', error);
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('error').style.display = 'block';
-                return;
+                document.getElementById('debug').textContent += '\n\nERRORE: ' + error.message;
+                document.getElementById('debug').style.display = 'block';
             }
-            
-            console.log('Dati ricevuti:', surveyData);
-            
-            const userScores = calculateUserScores(surveyData);
-            console.log('Punteggi calcolati:', userScores);
-            
-            // Nasconde il loading e mostra i risultati
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('chartArea').style.display = 'block';
-            
-            // Crea il grafico e la tabella
-            createSpiderChart(userScores);
-            createScoresTable(userScores);
         }
 
         // Avvia quando la pagina è caricata
-        window.addEventListener('load', init);
+        window.addEventListener('load', function() {
+            console.log('Pagina caricata, avvio inizializzazione...');
+            setTimeout(init, 100);
+        });
     </script>
 </body>
 </html>
