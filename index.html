@@ -1,1 +1,444 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Il quadro d'insieme - I tuoi risultati</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .results-container {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .chart-section {
+            padding: 50px;
+            background: white;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 600px;
+            margin: 30px auto;
+            background: #fafafa;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        #spiderChart {
+            max-height: 100%;
+        }
+
+        .legend {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+        }
+
+        .legend-item {
+            display: inline-block;
+            margin: 0 25px;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .legend-dot {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        .user-dot {
+            background-color: #1f77b4;
+            box-shadow: 0 2px 4px rgba(31, 119, 180, 0.4);
+        }
+
+        .reference-line {
+            background-color: #ff7f0e;
+            border-radius: 0;
+            width: 24px;
+            height: 4px;
+            box-shadow: 0 2px 4px rgba(255, 127, 14, 0.4);
+        }
+
+        .error-message {
+            text-align: center;
+            padding: 50px;
+            color: #e74c3c;
+            font-size: 18px;
+            background: #fdf2f2;
+            border: 2px solid #fecaca;
+            border-radius: 10px;
+            margin: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+            font-size: 18px;
+        }
+
+        .scores-table {
+            margin-top: 40px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 30px;
+        }
+
+        .scores-table h3 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #333;
+            font-size: 1.5em;
+        }
+
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .score-row:last-child {
+            border-bottom: none;
+        }
+
+        .dimension-name {
+            font-weight: 600;
+            color: #495057;
+            flex: 1;
+        }
+
+        .score-value {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #1f77b4;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="results-container">
+        <div class="header">
+            <h1>Il quadro d'insieme</h1>
+            <p>I tuoi risultati personalizzati</p>
+        </div>
+
+        <div class="chart-section">
+            <div id="loading" class="loading">
+                Caricamento dei tuoi risultati...
+            </div>
+
+            <div id="error" class="error-message" style="display: none;">
+                Errore nel caricamento dei dati. Assicurati di aver completato il questionario correttamente.
+            </div>
+
+            <div id="chartArea" style="display: none;">
+                <div class="chart-container">
+                    <canvas id="spiderChart"></canvas>
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <span class="legend-dot user-dot"></span>
+                        Tu
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot reference-line"></span>
+                        La Media degli altri
+                    </div>
+                </div>
+
+                <div class="scores-table">
+                    <h3>I tuoi punteggi dettagliati</h3>
+                    <div id="scoresDetail"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Risultati generati automaticamente dal questionario sulle soft skills</p>
+        </div>
+    </div>
+
+    <script>
+        // Configurazione delle dimensioni e domande
+        const dimensionConfig = {
+            'Resilienza': [10, 29, 38, 41],
+            'Fiducia': [9, 19, 28, 37],
+            'Autonomia': [5, 15, 24, 40],
+            'Problem Solving': [4, 14, 23, 33],
+            'Curiosità': [6, 16, 25, 34],
+            'Impegno': [2, 12, 21, 31],
+            'Leadership': [3, 13, 22, 32, 39],
+            'Collaborazione': [7, 17, 26, 35],
+            'Empatia': [8, 18, 27, 36],
+            'Apertura': [1, 11, 20, 30]
+        };
+
+        // Valori di riferimento (la media degli altri)
+        const referenceValues = {
+            'Resilienza': 3.12,
+            'Fiducia': 3.49,
+            'Autonomia': 4.00,
+            'Problem Solving': 3.90,
+            'Curiosità': 3.60,
+            'Impegno': 4.00,
+            'Leadership': 3.61,
+            'Collaborazione': 3.66,
+            'Empatia': 3.62,
+            'Apertura': 3.68
+        };
+
+        // Funzione per ottenere parametri URL
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // Funzione per convertire il valore LimeSurvey in numero
+        function convertLimeSurveyValue(value) {
+            if (value.startsWith('A')) {
+                return parseInt(value.substring(1));
+            }
+            return parseInt(value) || 0;
+        }
+
+        // Funzione per ottenere i dati dal questionario
+        function getSurveyData() {
+            const surveyData = {};
+            
+            // LimeSurvey passa i dati come parametri URL
+            // Formato: 773748X1286X31883B2001=A3&773748X1286X31883B2002=A4...
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            let hasData = false;
+            
+            for (let [key, value] of urlParams.entries()) {
+                // Verifica se il parametro corrisponde al formato delle nostre domande
+                if (key.includes('B20')) {
+                    // Estrae il numero della domanda (2001 -> 1, 2002 -> 2, ecc.)
+                    const match = key.match(/B20(\d+)/);
+                    if (match) {
+                        const questionNum = parseInt(match[1]);
+                        surveyData[questionNum] = convertLimeSurveyValue(value);
+                        hasData = true;
+                    }
+                }
+            }
+            
+            return hasData ? surveyData : null;
+        }
+
+        // Calcola le medie per ogni dimensione
+        function calculateUserScores(surveyData) {
+            const userScores = {};
+            
+            for (const [dimension, questions] of Object.entries(dimensionConfig)) {
+                let total = 0;
+                let validAnswers = 0;
+                
+                for (const questionNum of questions) {
+                    const value = surveyData[questionNum];
+                    if (value !== undefined && value !== null) {
+                        total += value;
+                        validAnswers++;
+                    }
+                }
+                
+                userScores[dimension] = validAnswers > 0 ? (total / validAnswers) : 0;
+            }
+            
+            return userScores;
+        }
+
+        // Crea il diagramma spider
+        function createSpiderChart(userScores) {
+            const labels = Object.keys(dimensionConfig);
+            const userData = labels.map(label => userScores[label]);
+            const referenceData = labels.map(label => referenceValues[label]);
+
+            const ctx = document.getElementById('spiderChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Tu',
+                        data: userData,
+                        borderColor: '#1f77b4',
+                        backgroundColor: 'rgba(31, 119, 180, 0.15)',
+                        pointBackgroundColor: '#1f77b4',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        borderWidth: 3
+                    }, {
+                        label: 'La Media degli altri',
+                        data: referenceData,
+                        borderColor: '#ff7f0e',
+                        backgroundColor: 'rgba(255, 127, 14, 0.05)',
+                        pointBackgroundColor: '#ff7f0e',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: 'rgba(0, 0, 0, 0.15)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.15)'
+                            },
+                            pointLabels: {
+                                font: {
+                                    size: 14,
+                                    weight: '600'
+                                },
+                                color: '#495057'
+                            },
+                            ticks: {
+                                beginAtZero: true,
+                                min: 1,
+                                max: 5,
+                                stepSize: 1,
+                                color: '#6c757d',
+                                backdropColor: 'rgba(255, 255, 255, 0.8)',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    elements: {
+                        line: {
+                            tension: 0.2
+                        }
+                    }
+                }
+            });
+        }
+
+        // Crea la tabella dei punteggi
+        function createScoresTable(userScores) {
+            const scoresDetail = document.getElementById('scoresDetail');
+            
+            for (const [dimension, score] of Object.entries(userScores)) {
+                const row = document.createElement('div');
+                row.className = 'score-row';
+                
+                const name = document.createElement('div');
+                name.className = 'dimension-name';
+                name.textContent = dimension;
+                
+                const value = document.createElement('div');
+                value.className = 'score-value';
+                value.textContent = score.toFixed(2);
+                
+                row.appendChild(name);
+                row.appendChild(value);
+                scoresDetail.appendChild(row);
+            }
+        }
+
+        // Inizializzazione
+        function init() {
+            console.log('Inizializzazione pagina risultati...');
+            
+            const surveyData = getSurveyData();
+            
+            if (!surveyData) {
+                console.log('Nessun dato trovato');
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                return;
+            }
+            
+            console.log('Dati ricevuti:', surveyData);
+            
+            const userScores = calculateUserScores(surveyData);
+            console.log('Punteggi calcolati:', userScores);
+            
+            // Nasconde il loading e mostra i risultati
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('chartArea').style.display = 'block';
+            
+            // Crea il grafico e la tabella
+            createSpiderChart(userScores);
+            createScoresTable(userScores);
+        }
+
+        // Avvia quando la pagina è caricata
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
