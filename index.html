@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Il quadro d'insieme - I tuoi risultati</title>
+    <title>Your Skills Overview - Results</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style>
         * {
@@ -176,19 +176,19 @@
 <body>
     <div class="results-container">
         <div class="header">
-            <h1>Il quadro d'insieme</h1>
-            <p>I tuoi risultati personalizzati</p>
+            <h1>Your Skills Overview</h1>
+            <p>Your personalized results</p>
         </div>
 
         <div class="chart-section">
             <div id="loading" class="loading">
-                Caricamento dei tuoi risultati...
+                Loading your results...
             </div>
 
             <div id="debug" class="debug-info" style="display: none;"></div>
 
             <div id="error" class="error-message" style="display: none;">
-                Errore nel caricamento dei dati. Assicurati di aver completato il questionario correttamente.
+                Error loading data. Please make sure you have completed the questionnaire correctly.
             </div>
 
             <div id="chartArea" style="display: none;">
@@ -199,16 +199,16 @@
                 <div class="legend">
                     <div class="legend-item">
                         <span class="legend-dot user-dot"></span>
-                        Tu
+                        You
                     </div>
                     <div class="legend-item">
                         <span class="legend-dot reference-line"></span>
-                        La Media degli altri
+                        Average Score
                     </div>
                 </div>
 
                 <div class="scores-table">
-                    <h3>I tuoi punteggi dettagliati</h3>
+                    <h3>Your detailed scores</h3>
                     <div id="scoresDetail"></div>
                 </div>
             </div>
@@ -220,30 +220,30 @@
         
         // Configurazione delle dimensioni e domande
         const dimensionConfig = {
-            'Resilienza': [10, 29, 38, 41],
-            'Fiducia': [9, 19, 28, 37],
-            'Autonomia': [5, 15, 24, 40],
+            'Resilience': [10, 29, 38, 41],
+            'Self-confidence': [9, 19, 28, 37],
+            'Autonomy': [5, 15, 24, 40],
             'Problem Solving': [4, 14, 23, 33],
-            'Curiosità': [6, 16, 25, 34],
-            'Impegno': [2, 12, 21, 31],
+            'Curiosity': [6, 16, 25, 34],
+            'Commitment': [2, 12, 21, 31],
             'Leadership': [3, 13, 22, 32, 39],
-            'Collaborazione': [7, 17, 26, 35],
-            'Empatia': [8, 18, 27, 36],
-            'Apertura': [1, 11, 20, 30]
+            'Collaboration': [7, 17, 26, 35],
+            'Cognitive Empathy': [8, 18, 27, 36],
+            'Openness': [1, 11, 20, 30]
         };
 
         // Valori di riferimento (la media degli altri)
         const referenceValues = {
-            'Resilienza': 3.12,
-            'Fiducia': 3.49,
-            'Autonomia': 4.00,
+            'Resilience': 3.12,
+            'Self-confidence': 3.49,
+            'Autonomy': 4.00,
             'Problem Solving': 3.90,
-            'Curiosità': 3.60,
-            'Impegno': 4.00,
+            'Curiosity': 3.60,
+            'Commitment': 4.00,
             'Leadership': 3.61,
-            'Collaborazione': 3.66,
-            'Empatia': 3.62,
-            'Apertura': 3.68
+            'Collaboration': 3.66,
+            'Cognitive Empathy': 3.62,
+            'Openness': 3.68
         };
 
         // Funzione per convertire il valore LimeSurvey in numero
@@ -388,7 +388,7 @@
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Tu',
+                        label: 'You',
                         data: userData,
                         borderColor: '#1f77b4',
                         backgroundColor: 'rgba(31, 119, 180, 0.15)',
@@ -399,7 +399,7 @@
                         pointHoverRadius: 8,
                         borderWidth: 3
                     }, {
-                        label: 'La Media degli altri',
+                        label: 'Average Score',
                         data: referenceData,
                         borderColor: '#ff7f0e',
                         backgroundColor: 'rgba(255, 127, 14, 0.05)',
